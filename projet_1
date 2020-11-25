@@ -1,1 +1,227 @@
+package main
 
+
+import (
+	"fmt"
+	"io/ioutil"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+const Infinity = int(^uint(0) >> 1)
+
+type Graph struct {
+	Edges []*Edge
+	Nodes map[*Node]bool
+}
+
+type Edge struct {
+	Parent *Node
+	Child  *Node
+	Cost   int
+}
+
+type Node struct {
+	Name string
+}
+
+func (g *Graph) AddEdge(parent, child *Node, cost int) {
+	edge := &Edge{
+		Parent: parent,
+		Child:  child,
+		Cost:   cost,
+	}
+
+	g.Edges = append(g.Edges, edge)
+	g.AddNode(parent)
+	g.AddNode(child)
+}
+
+func (g *Graph) AddNode(node *Node) {
+	if g.Nodes == nil {
+		g.Nodes = make(map[*Node]bool)
+	}
+
+	_, ok := g.Nodes[node]
+	if !ok {
+		g.Nodes[node] = true
+	}
+}
+
+func (g *Graph) String() string {
+	var s string
+
+	s += "Edges:\n"
+	for _, edge := range g.Edges {
+		s += edge.Parent.Name + " -> " + edge.Child.Name + " = " + strconv.Itoa(edge.Cost)
+		s += "\n"
+	}
+	s += "\n"
+
+	s += "Nodes: "
+	i := 0
+	for node, _ := range g.Nodes {
+		if i == len(g.Nodes)-1 {
+			s += node.Name
+		} else {
+			s += node.Name + ", "
+		}
+		i++
+	}
+	s += "\n"
+
+	return s
+}
+
+func check(e error){
+	if e!=nil{
+		panic(e)
+	}
+}
+
+func (g *Graph) Dijkstra(startNode *Node) (costTable map[*Node]int) {
+
+
+	costTable = g.NewCostTable(startNode)
+
+
+	var visited []*Node
+
+
+	for len(visited) != len(g.Nodes) {
+
+
+		node := getClosestNonVisitedNode(costTable, visited)
+
+
+		visited = append(visited, node)
+
+
+		nodeEdges := g.GetNodeEdges(node)
+
+		for _, edge := range nodeEdges {
+
+			distanceToNeighbor := costTable[node] + edge.Cost
+
+			if distanceToNeighbor < costTable[edge.Child] {
+
+				costTable[edge.Child] = distanceToNeighbor
+			}
+		}
+	}
+
+	return costTable
+}
+
+func (g *Graph) NewCostTable(startNode *Node) map[*Node]int {
+	costTable := make(map[*Node]int)
+	costTable[startNode] = 0
+
+	for node, _ := range g.Nodes {
+		if node != startNode {
+			costTable[node] = Infinity
+		}
+	}
+
+	return costTable
+}
+
+func (g *Graph) GetNodeEdges(node *Node) (edges []*Edge) {
+	for _, edge := range g.Edges {
+		if edge.Parent == node {
+			edges = append(edges, edge)
+		}
+	}
+
+	return edges
+}
+
+func getClosestNonVisitedNode(costTable map[*Node]int, visited []*Node) *Node {
+	type CostTableToSort struct {
+		Node *Node
+		Cost int
+	}
+	var sorted []CostTableToSort
+
+	for node, cost := range costTable {
+		var isVisited bool
+		for _, visitedNode := range visited {
+			if node == visitedNode {
+				isVisited = true
+			}
+		}
+
+		if !isVisited {
+			sorted = append(sorted, CostTableToSort{node, cost})
+		}
+	}
+
+
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Cost < sorted[j].Cost
+	})
+
+	return sorted[0].Node
+}
+
+
+func main() {
+	graph := Graph{}
+
+
+	dat, err :=ioutil.ReadFile("test.txt")
+	check(err)
+	splitWord := strings.Split(string(dat), " ") //Renvoie un tableau de mot séparé par un espace
+	var taille int = int (len(splitWord)) // Taille du tableau
+	//var splitWor  []string
+	//for i:=0 ; i< taille; i++ { //On divise par 4 pour connaitre le nombre de lignes car chaque ligne comporte 4 éléments
+	//	splitWord = append(splitWord, "splitWordb[i],")
+	//}
+
+
+	//var liste_noeuds = [26]string {"none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none"}
+
+	var liste_noeuds  []string
+
+	var map_noeuds = make(map[string]*Node)
+
+	c := 0
+	var a *Node
+	var b *Node
+
+	for i:=0 ; i< taille/4; i++ {  //On divise par 4 pour connaitre le nombre de lignes car chaque ligne comporte 4 éléments
+		for j:=0; j<2; j++ {
+			test := true
+			for k := 0; k<c; k++{
+				if liste_noeuds[k] == splitWord[i*4+j]{
+					test = false
+				}
+			}
+			if test {
+				liste_noeuds = append(liste_noeuds, splitWord[i*4+j])
+				map_noeuds[splitWord[i*4+j]] = &Node{Name: splitWord[i*4+j]}
+				c += 1
+
+			}
+			if j == 0 {
+				a = map_noeuds[splitWord[i*4+j]]
+			} else {
+				b = map_noeuds[splitWord[i*4+j]]
+			}
+		}
+		distance, _ := strconv.Atoi(splitWord[i*4+3])
+		graph.AddEdge(a, b, distance)
+	}
+
+	fmt.Println(graph.String())
+
+	begining := map_noeuds[splitWord[taille-2]]
+	destination := map_noeuds[splitWord[taille-1]]
+	costTable := graph.Dijkstra(begining)
+
+	fmt.Printf("Distance from %s to %s = %d\n", begining.Name, destination.Name, (costTable[destination]))
+
+
+
+}
